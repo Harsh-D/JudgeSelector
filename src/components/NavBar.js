@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { NavLink as RouterNavLink } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -21,8 +21,17 @@ import { useAuth0 } from "@auth0/auth0-react";
 
 const NavBar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
   const { user, isAuthenticated, loginWithRedirect, logout } = useAuth0();
   const toggle = () => setIsOpen(!isOpen);
+
+  useEffect(() => {
+    if (darkMode) {
+      document.body.classList.add("dark-mode");
+    } else {
+      document.body.classList.remove("dark-mode");
+    }
+  }, [darkMode]);
 
   const logoutWithRedirect = () =>
     logout({
@@ -31,9 +40,13 @@ const NavBar = () => {
       },
     });
 
+  const toggleDarkMode = () => {
+    setDarkMode((prevMode) => !prevMode);
+  };
+
   return (
     <div className="nav-container">
-      <Navbar color="light" light expand="md" container={false}>
+      <Navbar color={darkMode ? "dark" : "light"} light={!darkMode} dark={darkMode} expand="md" container={false}>
         <Container>
           <NavbarToggler onClick={toggle} />
           <Collapse isOpen={isOpen} navbar>
@@ -50,14 +63,14 @@ const NavBar = () => {
               </NavItem>
               {isAuthenticated && (
                 <>
-                  <NavItem>
+                <NavItem>
                     <NavLink
                       tag={RouterNavLink}
-                      to="/assign"
+                      to="/cases"
                       exact
                       activeClassName="router-link-exact-active"
                     >
-                      Assign a judge
+                      Cases
                     </NavLink>
                   </NavItem>
                   <NavItem>
@@ -68,6 +81,16 @@ const NavBar = () => {
                       activeClassName="router-link-exact-active"
                     >
                       Judges
+                    </NavLink>
+                  </NavItem>
+                  <NavItem>
+                    <NavLink
+                      tag={RouterNavLink}
+                      to="/assign"
+                      exact
+                      activeClassName="router-link-exact-active"
+                    >
+                      Assign a judge
                     </NavLink>
                   </NavItem>
                 </>
@@ -104,6 +127,10 @@ const NavBar = () => {
                     >
                       <FontAwesomeIcon icon="power-off" className="mr-3" /> Log
                       out
+                    </DropdownItem>
+                    <DropdownItem onClick={toggleDarkMode}>
+                      <FontAwesomeIcon icon="adjust" className="mr-3" />{" "}
+                      {darkMode ? "Light Mode" : "Dark Mode"}
                     </DropdownItem>
                   </DropdownMenu>
                 </UncontrolledDropdown>
@@ -148,6 +175,12 @@ const NavBar = () => {
                     onClick={() => logoutWithRedirect()}
                   >
                     Log out
+                  </RouterNavLink>
+                </NavItem>
+                <NavItem>
+                  <FontAwesomeIcon icon="adjust" className="mr-3" />
+                  <RouterNavLink to="#" onClick={toggleDarkMode}>
+                    {darkMode ? "Light Mode" : "Dark Mode"}
                   </RouterNavLink>
                 </NavItem>
               </Nav>
