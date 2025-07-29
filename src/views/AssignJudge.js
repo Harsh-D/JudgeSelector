@@ -82,7 +82,7 @@ export const AssignJudge = () => {
     }
     else if (benchType === "Constitution bench") {
       const assignedJudges = new Set();
-      const seniorJuniorJudges = [... judges.senior, ...judges.junior];
+      const seniorJuniorJudges = [...judges.senior, ...judges.junior];
       while (assignedJudges.size < numberOfJudges) {
         const randomJudge =
         seniorJuniorJudges[Math.floor(Math.random() * seniorJuniorJudges.length)].name;

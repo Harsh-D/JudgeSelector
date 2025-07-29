@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Badge, Input, Button, FormGroup, Label, Table } from "reactstrap";
+import { Input, Button, FormGroup, Label, Table } from "reactstrap";
 import { withAuthenticationRequired } from "@auth0/auth0-react";
 import Loading from "../components/Loading";
 import { useDispatch, useSelector } from "react-redux";
@@ -44,7 +44,7 @@ export const subjects = [
   "Establishment & Recognition of Educational Institutions",
 ];
 
-const getRandomSubjects = () => {
+export const getRandomSubjects = () => {
   const shuffled = subjects.sort(() => 0.5 - Math.random());
   return shuffled.slice(0, Math.floor(Math.random() * 2) + 2).join(", ");
 };
