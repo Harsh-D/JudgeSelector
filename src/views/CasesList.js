@@ -9,13 +9,13 @@ import { subjects } from "./JudgesList";
 const CasesList = () => {
   const dispatch = useDispatch();
   const cases = useSelector((state) => state.cases.value);
-  const [newCase, setNewCase] = useState({ name: "", details: "", subject: "" });
+  const [newCase, setNewCase] = useState({ name: "", categoryCode: "", subCategoryCode: "", subject: "" });
   const [subjectDropdownOpen, setSubjectDropdownOpen] = useState(false);
   const toggleSubjectDropdown = () => setSubjectDropdownOpen((prevState) => !prevState);
 
   const handleAddCase = () => {
     dispatch(addCase(newCase));
-    setNewCase({ name: "", details: "", subject: "" });
+    setNewCase({ name: "", categoryCode: "", subCategoryCode: "", subject: "" });
   };
 
   return (
@@ -33,13 +33,23 @@ const CasesList = () => {
           />
         </FormGroup>
         <FormGroup>
-          <Label for="caseDetails">Case Details</Label>
+          <Label for="caseCategoryCode">Case Category Code</Label>
           <Input
             type="text"
-            id="caseDetails"
-            placeholder="Case Details"
-            value={newCase.details}
-            onChange={(e) => setNewCase({ ...newCase, details: e.target.value })}
+            id="caseCategoryCode"
+            placeholder="Case Category Code"
+            value={newCase.categoryCode}
+            onChange={(e) => setNewCase({ ...newCase, categoryCode: e.target.value })}
+          />
+        </FormGroup>
+        <FormGroup>
+          <Label for="caseSubCategoryCode">Case Sub Category Code</Label>
+          <Input
+            type="text"
+            id="caseCategoryCode"
+            placeholder="Case Sub Category Code"
+            value={newCase.subCategoryCode}
+            onChange={(e) => setNewCase({ ...newCase, subCategoryCode: e.target.value })}
           />
         </FormGroup>
         <FormGroup>
@@ -65,7 +75,10 @@ const CasesList = () => {
           </Dropdown>
           <p className="mt-3">Selected Subject: {newCase.subject}</p>
         </FormGroup>
-        <Button color="primary" onClick={handleAddCase} disabled={!(newCase.name && newCase.details && newCase.subject)}>Add Case</Button>
+        <Button color="primary" onClick={handleAddCase} disabled={!(newCase.name 
+          && newCase.categoryCode 
+          && newCase.subCategoryCode
+          && newCase.subject)}>Add Case</Button>
       </div>
       <br/>
       <ListGroup>
@@ -76,10 +89,16 @@ const CasesList = () => {
             <ListGroupItemText>
               <p>
                 <Badge pill color={"dark"} className="text-white">
-                  Details:
+                  Category Code:
                 </Badge>
               </p>
-              <p className="text-secondary">{item.details}</p>
+              <p className="text-secondary">{item.categoryCode}</p>
+              <p>
+                <Badge pill color={"dark"} className="text-white">
+                  Sub Category Code:
+                </Badge>
+              </p>
+              <p className="text-secondary">{item.subCategoryCode}</p>
               <p>
                 <Badge pill color={"dark"} className="text-white">
                   Subject:

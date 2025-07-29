@@ -90,7 +90,7 @@ const NavBar = () => {
                       exact
                       activeClassName="router-link-exact-active"
                     >
-                      Assign a judge
+                      Assignment
                     </NavLink>
                   </NavItem>
                 </>

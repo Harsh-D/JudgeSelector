@@ -40,8 +40,6 @@ export const AssignJudge = () => {
   const dispatch = useDispatch();
   const [showToast, setShowToast] = useState(false);
 
-  console.log("assignedJudges", assignmentDetails);
-
   const handleCaseSelect = (item) => {
     setSelectedCase(item);
     setShowToast(false);
@@ -71,32 +69,46 @@ export const AssignJudge = () => {
       numberOfJudges = numJudges;
     }
 
-    const assignedJudges = new Set();
-    while (assignedJudges.size < numberOfJudges) {
-      const randomJudge =
-        judges[Math.floor(Math.random() * judges.length)].name;
-      assignedJudges.add(randomJudge);
+    if(benchType === "Regular subject matter bench" ) {
+      var selectedCourtroom = Math.floor(Math.random() * (17)) + 1;
+      dispatch(
+        setAssignedJudge({ 
+          assignedJudge: selectedCourtroom,
+          case: selectedCase,
+          benchType: benchType,
+          numJudges: numJudges
+        })
+      );
     }
-    dispatch(
-      setAssignedJudge({ 
-        assignedJudge: Array.from(assignedJudges).join(", "),
-        case: selectedCase,
-        benchType: benchType,
-        numJudges: numJudges
-      })
-    );
+    else if (benchType === "Constitution bench") {
+      const assignedJudges = new Set();
+      const seniorJuniorJudges = [... judges.senior, ...judges.junior];
+      while (assignedJudges.size < numberOfJudges) {
+        const randomJudge =
+        seniorJuniorJudges[Math.floor(Math.random() * seniorJuniorJudges.length)].name;
+        assignedJudges.add(randomJudge);
+      }
+      dispatch(
+        setAssignedJudge({ 
+          assignedJudge: Array.from(assignedJudges).join(", "),
+          case: selectedCase,
+          benchType: benchType,
+          numJudges: numJudges
+        })
+      );
+    }
   };
 
   return (
     <div className="mb-5">
-      <h1>Assign a Judge</h1>
+      <h1>Case Assignment</h1>
       <p className="lead">
-        Select your case and the software will allocate a courtrooms or judge(s)
+        Select your case and the software will allocate courtrooms or judge(s)
         based on certain parameters and a randomizer to ensure a fair process.
       </p>
       <p className="lead">
         If you choose the Regular subject matter bench, the software will assign
-        two courtrooms to the case. If the Constitution bench is selected, you
+        a courtroom to the case. If the Constitution bench is selected, you
         can assign judges and the number of judges on the bench.
       </p>
 
@@ -174,9 +186,15 @@ export const AssignJudge = () => {
         <Row className="mt-3">
           <Col>
             <Button color="primary" onClick={assignJudge}>
-              Assign Judge
+              {benchType === "Regular subject matter bench"
+                ? "Assign Courtroom"
+                : "Assign Judges"}
             </Button>
-            <p className="mt-3">Assigned Judge(s): {assignmentDetails?.assignedJudge}</p>
+            <p className="mt-3">
+            {benchType === "Regular subject matter bench"
+                ? "Assigned Courtroom: "
+                : "Assigned Judges: "} 
+              {assignmentDetails?.assignedJudge}</p>
           </Col>
         </Row>
         {showToast && (
@@ -185,9 +203,9 @@ export const AssignJudge = () => {
               <Toast>
                 <ToastHeader>Warning</ToastHeader>
                 <ToastBody>
-                  Please select a case and bench type before assigning a judge.
+                  Please select a case and bench type before assigning a courtroom.
                 </ToastBody>
-              </Toast>
+              </Toast>       
             </Col>
           </Row>
         )}

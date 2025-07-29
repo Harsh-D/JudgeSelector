@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Badge, ListGroup, ListGroupItem, ListGroupItemText, Input, Button, FormGroup, Label, Dropdown, DropdownToggle, DropdownMenu, DropdownItem } from "reactstrap";
+import React, { useState, useEffect, useMemo } from "react";
+import { Badge, Input, Button, FormGroup, Label, Table } from "reactstrap";
 import { withAuthenticationRequired } from "@auth0/auth0-react";
 import Loading from "../components/Loading";
 import { useDispatch, useSelector } from "react-redux";
@@ -49,47 +49,173 @@ const getRandomSubjects = () => {
   return shuffled.slice(0, Math.floor(Math.random() * 2) + 2).join(", ");
 };
 
-//TODO: move the default logic to a separate file or slice file
-export const initialJudges = Array.from({ length: 34 }, (_, i) => ({
+export const initialSeniorJudges = Array.from({ length: 17 }, (_, i) => ({
   name: `Judge ${i + 1}`,
-  expertise: `${getRandomSubjects()}`,
-  level: i < 16 ? "Senior" : "Junior",
+  level: "Senior",
   courtRoom: (i % 17) + 1,
 }));
 
+export const initialJuniorJudges = Array.from({ length: 17 }, (_, i) => ({
+  name: `Judge ${i + 18}`,
+  level: "Junior",
+  courtRoom: (i % 17) + 1,
+}));
+
+const retireJudge = (retiringJudge, seniorJudges, juniorJudges, vacantJuniorCourtrooms) => {
+  if (retiringJudge.level === "Senior") {
+    // Remove retiring senior
+    const updatedSenior = seniorJudges.filter(j => j.name !== retiringJudge.name);
+
+    if (juniorJudges.length === 0) {
+      // No junior to promote - senior slot becomes vacant, but for now senior vacancies not tracked
+      return { updatedSeniorJudges: updatedSenior, updatedJuniorJudges: juniorJudges, updatedVacantJuniorCourtrooms: vacantJuniorCourtrooms };
+    } else {
+      // Promote first junior to senior
+      const promotedJunior = { ...juniorJudges[0], level: "Senior", courtRoom: retiringJudge.courtRoom };
+
+      // Remove junior from juniors
+      const updatedJunior = juniorJudges.slice(1);
+
+      // The promoted junior’s previous courtroom now vacant for junior
+      const vacatedCourtroom = juniorJudges[0].courtRoom;
+
+      const updatedVacantJuniorCourtrooms = [...vacantJuniorCourtrooms, vacatedCourtroom];
+
+      // Add promoted junior to seniors
+      const updatedSeniorWithPromotion = [...updatedSenior, promotedJunior];
+
+      return {
+        updatedSeniorJudges: updatedSeniorWithPromotion, 
+        updatedJuniorJudges: updatedJunior, 
+        updatedVacantJuniorCourtrooms: updatedVacantJuniorCourtrooms
+      };
+    }
+  } else if (retiringJudge.level === "Junior") {
+    // Remove from junior and free up that courtroom slot
+    const updatedJunior = juniorJudges.filter(j => j.name !== retiringJudge.name);
+    const updatedVacantJuniorCourtrooms = [...vacantJuniorCourtrooms, retiringJudge.courtRoom];
+
+    return {
+      updatedSeniorJudges: seniorJudges,
+      updatedJuniorJudges: updatedJunior,
+      updatedVacantJuniorCourtrooms,
+    };
+  }
+  return { updatedSeniorJudges: seniorJudges, updatedJuniorJudges: juniorJudges, updatedVacantJuniorCourtrooms: vacantJuniorCourtrooms };
+};
+
+export const getCourtroomPairs = (seniorJudges, juniorJudges, vacantJuniorCourtrooms) => {
+  return Array.from({ length: 17 }, (_, i) => {
+    const courtRoom = i + 1;
+    const senior = seniorJudges?.find(j => parseInt(j.courtRoom, 10) === courtRoom);
+    const junior = juniorJudges?.find(j => parseInt(j.courtRoom, 10) === courtRoom);
+    const isJuniorVacant = vacantJuniorCourtrooms?.includes(courtRoom);
+    return { courtRoom, senior, junior, isJuniorVacant };
+  });
+};
+
+const JudgeRow = ({ courtRoom, senior, junior, onRetire }) => (
+  <tr>
+    <td>{courtRoom}</td>
+    <td>
+      {senior ? (
+        <>
+          <b>{senior.name}</b>{" "}
+          <Button size="sm" color="primary" onClick={() => onRetire(senior)}>
+            Retire
+          </Button>
+        </>
+      ) : (
+        <span className="text-danger">Vacant</span>
+      )}
+    </td>
+    <td>
+      {junior ? (
+        <>
+          <b>{junior.name}</b>{" "}
+          <Button  size="sm" color="primary" onClick={() => onRetire(junior)}>
+            Retire
+          </Button>
+        </>
+      ) : (
+        <span className="text-danger">Vacant</span>
+      )}
+    </td>
+  </tr>
+);
+
 const JudgesList = () => {
   const dispatch = useDispatch();
-  const judgeList = useSelector((state) => state.judges.value);
-  const [newJudge, setNewJudge] = useState({ name: "", expertise: [], level: "", courtRoom: "" });
-  const [expertiseDropdownOpen, setExpertiseDropdownOpen] = useState(false);
-  const toggleExpertiseDropdown = () => setExpertiseDropdownOpen((prevState) => !prevState);
+  const [newJudge, setNewJudge] = useState({ name: "", level: "junior", courtRoom: "" });
+  const seniorJudges = useSelector(state => state.judges.value.senior); 
+  const juniorJudges = useSelector(state => state.judges.value.junior);
+  const vacantJuniorCourtrooms = useSelector(state => state.judges.value.vacantJuniorCourtrooms ?? []);
+  
+  const pairs = useMemo(
+    () => getCourtroomPairs(seniorJudges, juniorJudges, vacantJuniorCourtrooms),
+    [seniorJudges, juniorJudges, vacantJuniorCourtrooms]
+  );
+  const handleAddJudge = () => {
+    if (vacantJuniorCourtrooms.length === 0) return;
+    const assignedCourtRoom = vacantJuniorCourtrooms[0];
+    const newJuniorJudge = {
+      name: newJudge.name.trim(),
+      level: "Junior",
+      courtRoom: assignedCourtRoom,
+    };
+  
+    const updatedJuniors = [...juniorJudges, newJuniorJudge];
+    const updatedVacantJuniorCourtrooms = vacantJuniorCourtrooms.filter(
+      (court) => court !== assignedCourtRoom
+    );
+    dispatch(setJudges({
+      senior: seniorJudges,
+      junior: updatedJuniors,
+      vacantJuniorCourtrooms: updatedVacantJuniorCourtrooms,
+    }));
+    setNewJudge({ name: "", level: "Junior", courtRoom: "" });
+  };
+  
+  const handleRetire = (judge) => {
+    const { updatedSeniorJudges, updatedJuniorJudges, updatedVacantJuniorCourtrooms } = retireJudge(
+      judge,
+      seniorJudges,
+      juniorJudges,
+      vacantJuniorCourtrooms
+    );
+    setNewJudge({ ...newJudge, courtRoom: updatedVacantJuniorCourtrooms[0] || "" });
+    dispatch(setJudges({ senior: updatedSeniorJudges, junior:updatedJuniorJudges, vacantJuniorCourtrooms: updatedVacantJuniorCourtrooms }));
+  };
 
   useEffect(() => {
-    if (judgeList.length === 0) {
-      dispatch(setJudges(initialJudges));
+    if (!seniorJudges?.length || !juniorJudges?.length) {
+      dispatch(setJudges({ senior: initialSeniorJudges, junior: initialJuniorJudges, vacantJuniorCourtrooms: [] }));
     }
-  }, [dispatch, judgeList.length]);
-
-  const handleAddJudge = () => {
-    const updatedJudges = [...judgeList, { ...newJudge, expertise: newJudge.expertise.join(", ") }];
-    dispatch(setJudges(updatedJudges));
-    setNewJudge({ name: "", expertise: [], level: "", courtRoom: "" });
-  };
-
-  const handleExpertiseSelect = (subject) => {
-    setNewJudge((prevState) => ({
-      ...prevState,
-      expertise: prevState.expertise.includes(subject)
-        ? prevState.expertise.filter((item) => item !== subject)
-        : [...prevState.expertise, subject],
-    }));
-  };
-
+  }, [dispatch, seniorJudges, juniorJudges, vacantJuniorCourtrooms]);
   return (
     <div>
-      <h1>Judges on the panel</h1>
-      <div>
-        <FormGroup>
+      <h1>Judges on the Panel</h1>
+      <Table bordered>
+        <thead>
+          <tr>
+            <th>Courtroom</th>
+            <th>Senior Judge</th>
+            <th>Junior Judge</th>
+          </tr>
+        </thead>
+        <tbody>
+          {pairs.map(({ courtRoom, senior, junior }) => (
+            <JudgeRow
+              key={courtRoom}
+              courtRoom={courtRoom}
+              senior={senior}
+              junior={junior}
+              onRetire={handleRetire}
+            />
+          ))}
+        </tbody>
+      </Table>
+      <FormGroup>
           <Label for="judgeName">Judge Name</Label>
           <Input
             type="text"
@@ -99,97 +225,13 @@ const JudgesList = () => {
             onChange={(e) => setNewJudge({ ...newJudge, name: e.target.value })}
           />
         </FormGroup>
-        <FormGroup>
-          <Label for="judgeExpertise">Judge Expertise</Label>
-          <Dropdown isOpen={expertiseDropdownOpen} toggle={toggleExpertiseDropdown}>
-            <DropdownToggle caret>
-              Select Expertise
-            </DropdownToggle>
-            <DropdownMenu style={{ maxHeight: '200px', overflowY: 'auto' }}>
-              {subjects.length > 0 ? (
-                subjects.map((subject, index) => (
-                  <DropdownItem
-                    key={index}
-                    onClick={() => handleExpertiseSelect(subject)}
-                    active={newJudge.expertise.includes(subject)}
-                  >
-                    {subject}
-                  </DropdownItem>
-                ))
-              ) : (
-                <DropdownItem disabled>No data available</DropdownItem>
-              )}
-            </DropdownMenu>
-          </Dropdown>
-          <p className="mt-3">Selected Expertise: {newJudge.expertise.join(", ")}</p>
-        </FormGroup>
-        <FormGroup tag="fieldset">
-          <Label>Judge Level</Label>
-          <FormGroup check>
-            <Label check>
-              <Input
-                type="radio"
-                name="judgeLevel"
-                value="Senior"
-                checked={newJudge.level === "Senior"}
-                onChange={(e) => setNewJudge({ ...newJudge, level: e.target.value })}
-              />
-              Senior
-            </Label>
-          </FormGroup>
-          <FormGroup check>
-            <Label check>
-              <Input
-                type="radio"
-                name="judgeLevel"
-                value="Junior"
-                checked={newJudge.level === "Junior"}
-                onChange={(e) => setNewJudge({ ...newJudge, level: e.target.value })}
-              />
-              Junior
-            </Label>
-          </FormGroup>
-        </FormGroup>
-        <FormGroup>
-          <Label for="courtRoom">Court Room</Label>
-          <Input
-            type="number"
-            id="courtRoom"
-            placeholder="Court Room"
-            value={newJudge.courtRoom}
-            onChange={(e) => setNewJudge({ ...newJudge, courtRoom: e.target.value })}
-          />
-        </FormGroup>
-        <Button color="primary" onClick={handleAddJudge} disabled={!(newJudge.name && newJudge.expertise.length > 0 && newJudge.level && newJudge.courtRoom)}>Add Judge</Button>
-      </div>
-      <br/>
-      <ListGroup>
-        {judgeList.map((item, index) => (
-          <ListGroupItem key={index}>
-            <b>Name: </b>
-            {item.name}{" "}
-            <ListGroupItemText>
-              <Badge
-                pill
-                color={item.level === "Senior" ? "dark" : "secondary"}
-                className="text-white"
-              >
-                {item.level}
-              </Badge>
-              <p>
-                <Badge pill color={"dark"} className="text-white">
-                  Expertise:
-                </Badge>
-              </p>
-              <p className="text-secondary">{item.expertise}</p>
-              <Badge pill color={"dark"} className="text-white">
-                Court Room:
-              </Badge>
-              <p className="text-secondary">{item.courtRoom}</p>
-            </ListGroupItemText>
-          </ListGroupItem>
-        ))}
-      </ListGroup>
+        <Button 
+          color="primary" 
+          onClick={handleAddJudge} 
+          disabled={!(newJudge.name && vacantJuniorCourtrooms.length > 0)}
+        >
+          Add Judge
+        </Button>
     </div>
   );
 };
